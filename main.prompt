@@ -1,0 +1,115 @@
+You are a world-class Staff Software Engineer specializing in creating autonomous AI agents for code generation and repair. Your task is to write a single, robust, and self-improving Python script named agent.py that adheres to the highest standards of Python best practices (PEP 8).
+
+Core Philosophy:
+This agent's purpose is to iteratively fix a broken Python project. It achieves this by running a test suite, analyzing failures, and using the Google Gemini LLM to generate code corrections. The agent must learn from its failures to generate better fixes over time by providing the LLM with the context of previously failed attempts.
+
+Functional Requirements for agent.py:
+
+1. Setup and Configuration:
+
+Imports: The script must import os, subprocess, shutil, logging, and the Gemini library using the specific alias import google.generativeai as genai.
+
+Constants: Define constants at the top of the file for key configuration parameters:
+
+TARGET_DIR = '../target_project/'
+
+TEST_DIR = '../test_suite/'
+
+BACKUP_DIR = '../target_project_backup/'
+
+MODEL_NAME = 'gemini-2.0-flash-exp'
+
+MAX_ATTEMPTS = 3
+
+Logging: Configure the logging module to write to a file named agent.log.
+
+CRITICAL: All logging calls MUST use lazy %-style formatting (e.g., logging.info("Processing file %s", filename)), NOT f-strings. This is for performance and is a strict requirement.
+
+API Key: The script must be configured to use the Google Gemini API, retrieving the API key from an environment variable.
+
+2. ABSOLUTE Error Handling Mandate (Generation Failure Condition):
+
+FORBIDDEN CODE: The code except Exception as e: is strictly forbidden everywhere except for one specific location: the final, outermost except block inside the main() function. Generating this code in any other function will be considered a failure to follow instructions.
+
+MANDATORY SPECIFIC EXCEPTIONS: You MUST use the following specific exceptions for the corresponding operations:
+
+try...except IOError as e: for all file system operations (open, shutil, etc.).
+
+try...except subprocess.CalledProcessError as e: for all subprocess calls.
+
+try...except genai.errors.GoogleAPICallError as e: for all calls to the Gemini API (using the genai alias).
+
+LOG ALL EXCEPTIONS: In every except block, the specific exception variable (e) MUST be logged using logging.error("... %s", e) to provide clear debugging information. The variable e must never be unused.
+
+3. Core Logic: The Self-Correction Cycle
+The main logic must operate within a loop that runs for a maximum of MAX_ATTEMPTS.
+
+File Handling: All calls to open() MUST explicitly specify the encoding, like open(filepath, 'r', encoding='utf-8').
+
+Safety First (Backup): Before the main loop begins, the agent MUST create a complete backup of the TARGET_DIR to BACKUP_DIR. Use a try...finally block to ensure that if the script fails, it restores the project from this backup.
+
+Step A: Run Tests:
+
+Execute the test suite using subprocess.run with the command pytest {TEST_DIR}.
+
+It must capture stdout, stderr, and the process's return code completely.
+
+Step B: Analyze Outcome:
+
+Success: If the tests pass (return code 0), the agent should log the success, print "SUCCESS: All tests passed!", delete the backup directory, and terminate.
+
+Failure: If the tests fail, the agent must log the full stderr from pytest.
+
+Step C: Intelligent Analysis & Prompt Generation (The "Learning" Step):
+
+The agent must parse the pytest error output to identify the specific file path of the primary failure.
+
+It will then construct a detailed, contextual prompt for the Gemini LLM. This prompt is critical and MUST include:
+
+The full, current source code of the file that needs to be fixed.
+
+The complete and unmodified pytest error message.
+
+Learning Context: A history of previous failed attempts within the current run. Frame this as: "In a previous attempt, a fix was proposed that resulted in this new error: \n\n$$\n{previous_error}\n$$\n\nPlease analyze the initial error and the failed fix to propose a better, alternative solution that addresses the root cause."
+
+Clear Instructions: A directive for the LLM: "You are an expert Python developer. Analyze the provided code and pytest error. Your task is to rewrite and output the entire Python file with the necessary corrections. Your response must contain ONLY the raw, complete Python code for the fixed file. Do not include explanations, apologies, or markdown formatting."
+
+Step D: Generate and Apply the Fix:
+
+Send the constructed prompt to the Gemini model.
+
+Receive the response and sanitize it to ensure it's pure Python code (e.g., stripping markdown backticks).
+
+Overwrite the target file with the sanitized, AI-generated code. Log the changes that were applied.
+
+4. Loop Termination:
+
+Success: If the loop is exited due to successful test runs, print a final success message.
+
+Failure: If the loop completes all MAX_ATTEMPTS without success, the agent must:
+
+Print "FAILURE: Could not fix the code within 3 attempts."
+
+Restore the original code by copying the contents from BACKUP_DIR back to TARGET_DIR.
+
+Clean up by deleting the backup directory.
+
+Exit with a non-zero status code.
+
+5. Code Structure:
+
+The final agent.py script should be well-structured with clear functions (e.g., run_tests(), generate_fix(file_path, error_message, history), backup_project(), main()).
+
+Strictly No Unused Variables/Arguments: All function arguments and defined variables MUST be used. For example, the generate_fix function must use its file_path argument to read the source code of the failing file.
+
+Perfect Indentation: The code must be perfectly indented using 4 spaces per level. Strict adherence to PEP 8 style guidelines is non-negotiable.
+
+ULTIMATE OUTPUT DIRECTIVE: RAW CODE ONLY
+Your entire response MUST be pure, raw, unformatted Python code, suitable for being saved directly into an agent.py file.
+
+The first line of your output MUST be import os.
+The last line of your output MUST be the final line of Python code.
+
+FORBIDDEN: Do not include any markdown fences (like python at the start or  at the end).
+FORBIDDEN: Do not include any explanatory text, notes, or summaries before or after the code.
+Any deviation from this format will cause the script to fail execution. Your response is being piped directly to a file.
